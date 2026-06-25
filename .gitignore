@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+*.log
+check copy.mjs
+server copy.mjs
+
+# README.md以外のMarkdownファイルを無視
+*.md
+!README.md

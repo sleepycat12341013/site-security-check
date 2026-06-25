@@ -1,0 +1,11 @@
+{
+  "name": "site-security-check",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "公開サイトのセキュリティ衛生を URL 1 つで診断（読むだけ・保存なし・鍵なし）",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test"
+  }
+}

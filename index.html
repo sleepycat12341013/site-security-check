@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>サイト セキュリティ診断</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <h1><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>サイト セキュリティ診断</h1>
+      <p class="lead">URL を 1 つ入れると、TLS 証明書・セキュリティヘッダ・Cookie 属性・混在コンテンツを<strong>読むだけ</strong>で診断します。保存しません。</p>
+
+      <form id="form">
+        <label for="url" class="field-label">診断したい URL</label>
+        <div class="field-row">
+          <input id="url" type="text" inputmode="url" placeholder="example.com（https:// は省略可）" autocomplete="off" aria-label="診断したい URL" required>
+          <button id="go" type="submit">チェックする</button>
+        </div>
+      </form>
+
+      <p id="status" class="status" role="status" aria-live="polite" hidden></p>
+    </header>
+
+    <section id="result" hidden></section>
+
+    <aside class="promo" aria-label="PR">
+      <span class="promo-tag">PR</span>
+      <div class="promo-body">
+        <strong>もっと深く診断したい方へ</strong>
+        <p>自動診断では拾えない設計上のリスクまで、手作業で 1 件ずつ確認します。</p>
+        <a class="promo-cta" href="https://coconala.com/users/6151497" target="_blank" rel="noopener">点検サービスを見る →</a>
+      </div>
+    </aside>
+
+    <footer>
+      <p>読むだけ・保存なし・鍵なし。<a href="https://x.com/lo_cmalu_ractu">X</a> / <a href="https://note.com/sleepycat1234">note</a></p>
+    </footer>
+  </main>
+
+  <script>
+    const form = document.getElementById('form');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    const go = document.getElementById('go');
+
+    const ICONS = {
+      ok: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      warn: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    };
+    const icon = (s) => (s === 'ok' ? ICONS.ok : ICONS.warn);
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const clip = (s, n = 160) => (s && s.length > n ? s.slice(0, n) + '…' : s || '');
+
+    function row(label, status, detail, why, value) {
+      const v = value || ''; // 生のヘッダ値（英語・技術的）は小さな証拠として下に・全文は title に
+      return `<div class="row ${status}">
+        <span class="ic">${icon(status)}</span>
+        <span class="lb">${esc(label)}</span>
+        <span class="dt">${esc(detail || '')}</span>
+        ${why ? `<span class="wy">${esc(why)}</span>` : ''}
+        ${v ? `<span class="val" title="${esc(v)}">値: ${esc(clip(v, 100))}</span>` : ''}
+      </div>`;
+    }
+
+    function render(r) {
+      const s = r.summary;
+      const headers = r.headers.map((h) => row(h.label, h.status, h.detail, h.why, h.value)).join('');
+      const tls = row('TLS 証明書', r.tls.status, r.tls.detail, r.tls.why);
+      const mixed = row('混在コンテンツ', r.mixedContent.status, r.mixedContent.detail, r.mixedContent.why) +
+        (r.mixedContent.items && r.mixedContent.items.length
+          ? `<div class="sub">${r.mixedContent.items.map(esc).join('<br>')}</div>` : '');
+
+      let cookies;
+      if (!r.cookies.items.length) {
+        cookies = row('Cookie 属性', r.cookies.status, r.cookies.note || 'Set-Cookie なし', '');
+      } else {
+        cookies = r.cookies.items.map((c) =>
+          row(`Cookie: ${c.name}`, c.status,
+            c.missing.length ? `不足: ${c.missing.join(', ')}` : 'HttpOnly / Secure / SameSite すべて有り',
+            c.missing.length ? 'セッション乗っ取り・CSRF の入口になりうる。' : '')
+        ).join('');
+      }
+
+      resultEl.innerHTML = `
+        <div class="summary grade-${s.grade}">
+          <div class="score">${s.score}<small>/100</small></div>
+          <div class="grade">${s.grade}</div>
+          <div class="meta">${esc(r.finalUrl)}<br>OK ${s.ok} / ${s.total} 項目</div>
+        </div>
+        <h2>TLS</h2>${tls}
+        <h2>セキュリティヘッダ</h2>${headers}
+        <h2>Cookie</h2>${cookies}
+        <h2>混在コンテンツ</h2>${mixed}
+      `;
+      resultEl.hidden = false;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = document.getElementById('url').value.trim();
+      if (!url) return;
+      resultEl.hidden = true;
+      statusEl.hidden = false;
+      statusEl.className = 'status';
+      statusEl.innerHTML = '<span class="spinner" aria-hidden="true"></span>診断中…';
+      go.disabled = true;
+      // 永久スピナー防止：15 秒で必ず打ち切る
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const res = await fetch('/check?url=' + encodeURIComponent(url), { signal: ctrl.signal });
+        const data = await res.json();
+        if (data.error) {
+          statusEl.className = 'status error';
+          statusEl.textContent = data.error;
+        } else {
+          statusEl.hidden = true;
+          render(data);
+        }
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusEl.textContent = err.name === 'AbortError'
+          ? 'サイトの応答が無く、時間内に診断できませんでした。時間をおいて再試行してください。'
+          : '通信に失敗しました: ' + err.message;
+      } finally {
+        clearTimeout(timer);
+        go.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
