@@ -5,7 +5,7 @@
 公開サイトのセキュリティ衛生を URL 1 つで診断する。**読むだけ・保存なし・鍵なし**。
 他人のサイトを取得して「ヘッダ / 証明書 / Cookie / 混在コンテンツ」を点検する lead magnet。
 
-**公開版**：<https://site-security-check.onrender.com>（無料プランのため初回アクセスは起動に数十秒かかることがある）
+**公開版**：<https://sleepycat12341013.github.io/site-security-check/>（画面は GitHub Pages で即表示。診断 API は Render 稼働で、初回の診断のみ起動に数十秒かかることがある）
 
 ## 使い方
 
