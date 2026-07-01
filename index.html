@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>サイト セキュリティ診断</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
@@ -44,6 +44,10 @@
     const statusEl = document.getElementById('status');
     const resultEl = document.getElementById('result');
     const go = document.getElementById('go');
+
+    // 画面(GitHub Pages)と診断API(Render)は別ホスト。github.io から開いた時だけ API を Render に向ける。
+    // ローカルの node や Render 自身から開いた時は同一オリジン（空文字＝相対）で従来どおり動く。
+    const API = location.hostname.endsWith('github.io') ? 'https://site-security-check.onrender.com' : '';
 
     const ICONS = {
       ok: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
@@ -106,11 +110,15 @@
       statusEl.className = 'status';
       statusEl.innerHTML = '<span class="spinner" aria-hidden="true"></span>診断中…';
       go.disabled = true;
-      // 永久スピナー防止：15 秒で必ず打ち切る
+      // 無料ホストは無操作でスリープする。初回だけ起動待ちが出るので、数秒待たされたら
+      // 「壊れてない・起動中」と伝えて離脱を防ぐ。打ち切りは 60 秒（起動＋診断の余裕）。
+      const wake = setTimeout(() => {
+        statusEl.innerHTML = '<span class="spinner" aria-hidden="true"></span>サーバを起動しています…（初回は最大 1 分ほどかかります）';
+      }, 4000);
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 15000);
+      const timer = setTimeout(() => ctrl.abort(), 60000);
       try {
-        const res = await fetch('/check?url=' + encodeURIComponent(url), { signal: ctrl.signal });
+        const res = await fetch(API + '/check?url=' + encodeURIComponent(url), { signal: ctrl.signal });
         const data = await res.json();
         if (data.error) {
           statusEl.className = 'status error';
@@ -122,10 +130,11 @@
       } catch (err) {
         statusEl.className = 'status error';
         statusEl.textContent = err.name === 'AbortError'
-          ? 'サイトの応答が無く、時間内に診断できませんでした。時間をおいて再試行してください。'
+          ? '時間内に応答がありませんでした。時間をおいて再試行してください。'
           : '通信に失敗しました: ' + err.message;
       } finally {
         clearTimeout(timer);
+        clearTimeout(wake);
         go.disabled = false;
       }
     });

@@ -230,9 +230,15 @@ async function diagnose(target) {
 }
 
 // ---- HTTP ----
+// CORS：静的フロント（GitHub Pages）だけがこの API をブラウザから叩ける想定。
+// 読むだけ・鍵なしの公開 API なので厳密な防御ではないが、想定オリジンを明示しておく。
+const ALLOW_ORIGIN = 'https://sleepycat12341013.github.io';
 function json(res, status, obj) {
   const body = JSON.stringify(obj);
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'access-control-allow-origin': ALLOW_ORIGIN,
+  });
   res.end(body);
 }
 
