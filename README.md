@@ -1,5 +1,7 @@
 # site-security-check（v0）
 
+![サイト セキュリティ診断の画面](img/screenshot.png)
+
 公開サイトのセキュリティ衛生を URL 1 つで診断する。**読むだけ・保存なし・鍵なし**。
 他人のサイトを取得して「ヘッダ / 証明書 / Cookie / 混在コンテンツ」を点検する lead magnet。
 
